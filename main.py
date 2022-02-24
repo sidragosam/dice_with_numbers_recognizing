@@ -25,7 +25,9 @@ if img is None:
     sys.exit("Could not read the image.")
 
 grayImage = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
+(thresh2, blackAndWhiteImage2) = cv.threshold(grayImage, 127, 255, cv.THRESH_BINARY)
+edged2 = cv.Canny(grayImage, 50, 200, 255)
+cv.imshow("Gray", edged2)
 new_image = np.zeros(grayImage.shape, grayImage.dtype)
 
 alpha = 1.0 	#	[1.0-3.0]
@@ -46,6 +48,8 @@ k = cv.waitKey(0)
 if k == ord("s"):
     cv.imwrite("dice.jpg", blackAndWhiteImage)
 
+
+#innentől nem jó, körbe kellene vágni a számot, majd felismerni...
 
 cnts = cv.findContours(blackAndWhiteImage.copy(), cv.RETR_EXTERNAL,
 	cv.CHAIN_APPROX_SIMPLE)

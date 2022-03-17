@@ -1,23 +1,29 @@
 from imutils.perspective import four_point_transform
 from imutils import contours
 import imutils
+from imutils import paths
 
+# from python_imagesearch import PyImageSearchANPR
 import numpy as np
+import argparse
 
 import cv2 as cv
 import sys
+import pytesseract
+
+import functions
 
 DIGITS_LOOKUP = {
-	(1, 1, 1, 0, 1, 1, 1): 0,
-	(0, 0, 1, 0, 0, 1, 0): 1,
-	(1, 0, 1, 1, 1, 1, 0): 2,
-	(1, 0, 1, 1, 0, 1, 1): 3,
-	(0, 1, 1, 1, 0, 1, 0): 4,
-	(1, 1, 0, 1, 0, 1, 1): 5,
-	(1, 1, 0, 1, 1, 1, 1): 6,
-	(1, 0, 1, 0, 0, 1, 0): 7,
-	(1, 1, 1, 1, 1, 1, 1): 8,
-	(1, 1, 1, 1, 0, 1, 1): 9
+    (1, 1, 1, 0, 1, 1, 1): 0,
+    (0, 0, 1, 0, 0, 1, 0): 1,
+    (1, 0, 1, 1, 1, 1, 0): 2,
+    (1, 0, 1, 1, 0, 1, 1): 3,
+    (0, 1, 1, 1, 0, 1, 0): 4,
+    (1, 1, 0, 1, 0, 1, 1): 5,
+    (1, 1, 0, 1, 1, 1, 1): 6,
+    (1, 0, 1, 0, 0, 1, 0): 7,
+    (1, 1, 1, 1, 1, 1, 1): 8,
+    (1, 1, 1, 1, 0, 1, 1): 9
 }
 
 img = cv.imread(cv.samples.findFile("dice2.jpg"))
@@ -27,101 +33,79 @@ if img is None:
 grayImage = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 (thresh2, blackAndWhiteImage2) = cv.threshold(grayImage, 127, 255, cv.THRESH_BINARY)
 edged2 = cv.Canny(grayImage, 50, 200, 255)
-cv.imshow("Gray", edged2)
+cv.imshow("Edged2", edged2)
 new_image = np.zeros(grayImage.shape, grayImage.dtype)
 
-alpha = 1.0 	#	[1.0-3.0]
-beta = 100 		#	[0-100]
+alpha = 1.0  # [1.0-3.0]
+beta = 100  # [0-100]
 
 for y in range(grayImage.shape[0]):
     for x in range(grayImage.shape[1]):
-            new_image[y,x] = np.clip(alpha*grayImage[y,x] + beta, 0, 255)
+        new_image[y, x] = np.clip(alpha * grayImage[y, x] + beta, 0, 255)
 
 (thresh, blackAndWhiteImage) = cv.threshold(new_image, 127, 255, cv.THRESH_BINARY)
-#gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-#blurred = cv.GaussianBlur(gray, (5, 5), 0)
+# gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+# blurred = cv.GaussianBlur(gray, (5, 5), 0)
 edged = cv.Canny(new_image, 50, 200, 255)
 
-#cv.imshow("Ablak", grayImage)
-cv.imshow("Teszt ablak", edged)
-k = cv.waitKey(0)
-if k == ord("s"):
-    cv.imwrite("dice.jpg", blackAndWhiteImage)
+# cv.imshow("Ablak", grayImage)
+cv.imshow("Edged", edged)
+
+thresh = cv.threshold(new_image, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
+kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1, 5))
+thresh = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel)
 
 
-#innentől nem jó, körbe kellene vágni a számot, majd felismerni...
-
-cnts = cv.findContours(blackAndWhiteImage.copy(), cv.RETR_EXTERNAL,
-	cv.CHAIN_APPROX_SIMPLE)
-cnts = imutils.grab_contours(cnts)
-digitCnts = []
-for c in cnts:
-	# compute the bounding box of the contour
-	(x, y, w, h) = cv.boundingRect(c)
-
-	# if the contour is sufficiently large, it must be a digit
-	if w >= 15 and (h >= 30 and h <= 40):
-		digitCnts.append(c)
-
-displayCnt = None
+def inverte(imagem):
+    imagem = cv.bitwise_not(imagem)
+    return imagem
 
 
-for c in cnts:
-	# approximate the contour
-	peri = cv.arcLength(c, True)
-	approx = cv.approxPolyDP(c, 0.02 * peri, True)
+cv.imshow("Threshold", thresh)
 
-	# if the contour has four vertices, then we have found
-	# the thermostat display
-	if len(approx) == 4:
-		displayCnt = approx
-		break
+newthresh = functions.in_range_img(img)
 
-warped = four_point_transform(grayImage, displayCnt.reshape(4, 2))
-output = four_point_transform(edged, displayCnt.reshape(4, 2))
+cv.imshow("Uj threshold", newthresh)
 
-digitCnts = contours.sort_contours(digitCnts,
-	method="left-to-right")[0]
-digits = []
+# Read image
+im_in = cv.imread("dice.jpg", cv.IMREAD_GRAYSCALE);
 
-for c in digitCnts:
-	# extract the digit ROI
-	(x, y, w, h) = cv.boundingRect(c)
-	roi = thresh[y:y + h, x:x + w]
+# Threshold.
+# Set values equal to or above 220 to 0.
+# Set values below 220 to 255.
 
-	(roiH, roiW) = roi.shape
-	(dW, dH) = (int(roiW * 0.25), int(roiH * 0.15))
-	dHC = int(roiH * 0.05)
+th, im_th = cv.threshold(im_in, 220, 255, cv.THRESH_BINARY_INV);
 
-	segments = [
-		((0, 0), (w, dH)),	# top
-		((0, 0), (dW, h // 2)),	# top-left
-		((w - dW, 0), (w, h // 2)),	# top-right
-		((0, (h // 2) - dHC) , (w, (h // 2) + dHC)), # center
-		((0, h // 2), (dW, h)),	# bottom-left
-		((w - dW, h // 2), (w, h)),	# bottom-right
-		((0, h - dH), (w, h))	# bottom
-	]
-	on = [0] * len(segments)
+# Copy the thresholded image.
+im_floodfill = im_th.copy()
 
-	for (i, ((xA, yA), (xB, yB))) in enumerate(segments):
-		segROI = roi[yA:yB, xA:xB]
-		total = cv.countNonZero(segROI)
-		area = (xB - xA) * (yB - yA)
+# Mask used to flood filling.
+# Notice the size needs to be 2 pixels than the image.
+h, w = im_th.shape[:2]
+mask = np.zeros((h+2, w+2), np.uint8)
 
-		# if the total number of non-zero pixels is greater than
-		# 50% of the area, mark the segment as "on"
-		if total / float(area) > 0.5:
-			on[i] = 1
+# Floodfill from point (0, 0)
+cv.floodFill(im_floodfill, mask, (0,0), 255);
 
-	# lookup the digit and draw it on the image
-	digit = DIGITS_LOOKUP[tuple(on)]
-	digits.append(digit)
-	cv.rectangle(output, (x, y), (x + w, y + h), (0, 255, 0), 1)
-	cv.putText(output, str(digit), (x - 10, y - 10),
-				cv.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 0), 2)
+# Invert floodfilled image
+im_floodfill_inv = cv.bitwise_not(im_th)
 
-print(u"{}{}.{} \u00b0C".format(*digits))
-cv.imshow("Input", edged)
-cv.imshow("Output", output)
+# Combine the two images to get the foreground.
+im_out = im_th # | im_floodfill_inv
+
+# Display images.
+cv.imshow("Thresholded Image", im_th)
+cv.imshow("Floodfilled Image", im_floodfill)
+cv.imshow("Inverted Floodfilled Image", im_floodfill_inv)
+cv.imshow("Foreground", im_out)
+cv.waitKey(0)
+
+options = "outputbase digits"
+
+cv.imshow("Output", im_out)
+
+# rgb = cv.cvtColor(invertalt, cv.COLOR_BGR2RGB)
+text = pytesseract.image_to_string(im_out, config=options)
+print(text)
+# cv.imshow("Inverted",invertalt)
 cv.waitKey(0)

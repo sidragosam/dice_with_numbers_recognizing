@@ -7,6 +7,8 @@
 import numpy as np
 # import argparse
 
+from PIL import Image
+
 import cv2 as cv
 import sys
 import pytesseract
@@ -28,7 +30,7 @@ DIGITS_LOOKUP = {
 
 pytesseract.pytesseract.tesseract_cmd = r'C:\Users\hallgato\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
 
-img = cv.imread(cv.samples.findFile("dice3.jpg"))
+img = cv.imread(cv.samples.findFile("dice2.jpg"))
 if img is None:
     sys.exit("Could not read the image.")
 
@@ -70,7 +72,7 @@ newthresh = functions.in_range_img(img)
 cv.imshow("Uj threshold", newthresh)
 
 # Read image
-im_in = cv.imread("dice.jpg", cv.IMREAD_GRAYSCALE)
+im_in = cv.imread("dice6.jpg", cv.IMREAD_GRAYSCALE)
 
 # Threshold.
 # Set values equal to or above 220 to 0.
@@ -87,13 +89,13 @@ h, w = im_th.shape[:2]
 mask = np.zeros((h+2, w+2), np.uint8)
 
 # Floodfill from point (0, 0)
-cv.floodFill(im_floodfill, mask, (0,0), 255)
+cv.floodFill(im_floodfill, mask, (0, 0), 255)
 
 # Invert floodfilled image
 im_floodfill_inv = cv.bitwise_not(im_th)
 
 # Combine the two images to get the foreground.
-im_out = im_th # | im_floodfill_inv
+im_out = im_th  # | im_floodfill_inv
 
 # Display images.
 cv.imshow("Thresholded Image", im_th)
@@ -102,13 +104,21 @@ cv.imshow("Inverted Floodfilled Image", im_floodfill_inv)
 cv.imshow("Foreground", im_out)
 # cv.waitKey(0)
 
+finalimg = cv.imread("dice2.jpg")
+finalthresh = functions.in_range_img(finalimg)
+
+cv.imshow("FinalIMG", finalthresh)
+
+
 options = "outputbase digits"
 custom_config = r'--oem 3 --psm 6 outputbase digits -c tessedit_char_whitelist=123456'
-print("Számok: " + pytesseract.image_to_string(im_out, config=custom_config))
+
+im = Image.fromarray((finalthresh * 255).astype(np.uint8))  # átalakítás 0-1-ről 0-255-re
+print("Számok: " + pytesseract.image_to_string(im, config=custom_config))
 cv.imshow("Output", im_out)
 
 # rgb = cv.cvtColor(invertalt, cv.COLOR_BGR2RGB)
-text = pytesseract.image_to_string(im_floodfill_inv, config=options)# im_out, config=options)
-print(text)
+# text = pytesseract.image_to_string(im_floodfill_inv, config=options)# im_out, config=options)
+# print(text)
 # cv.imshow("Inverted",invertalt)
 cv.waitKey(0)

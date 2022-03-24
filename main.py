@@ -1,11 +1,11 @@
-from imutils.perspective import four_point_transform
-from imutils import contours
-import imutils
-from imutils import paths
+# from imutils.perspective import four_point_transform
+# from imutils import contours
+# import imutils
+# from imutils import paths
 
 # from python_imagesearch import PyImageSearchANPR
 import numpy as np
-import argparse
+# import argparse
 
 import cv2 as cv
 import sys
@@ -26,7 +26,9 @@ DIGITS_LOOKUP = {
     (1, 1, 1, 1, 0, 1, 1): 9
 }
 
-img = cv.imread(cv.samples.findFile("dice2.jpg"))
+pytesseract.pytesseract.tesseract_cmd = r'C:\Users\hallgato\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'
+
+img = cv.imread(cv.samples.findFile("dice3.jpg"))
 if img is None:
     sys.exit("Could not read the image.")
 
@@ -51,7 +53,7 @@ edged = cv.Canny(new_image, 50, 200, 255)
 # cv.imshow("Ablak", grayImage)
 cv.imshow("Edged", edged)
 
-thresh = cv.threshold(new_image, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
+# thresh = cv.threshold(new_image, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU)[1]
 kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (1, 5))
 thresh = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel)
 
@@ -68,13 +70,13 @@ newthresh = functions.in_range_img(img)
 cv.imshow("Uj threshold", newthresh)
 
 # Read image
-im_in = cv.imread("dice.jpg", cv.IMREAD_GRAYSCALE);
+im_in = cv.imread("dice.jpg", cv.IMREAD_GRAYSCALE)
 
 # Threshold.
 # Set values equal to or above 220 to 0.
 # Set values below 220 to 255.
 
-th, im_th = cv.threshold(im_in, 220, 255, cv.THRESH_BINARY_INV);
+th, im_th = cv.threshold(im_in, 220, 255, cv.THRESH_BINARY_INV)
 
 # Copy the thresholded image.
 im_floodfill = im_th.copy()
@@ -85,7 +87,7 @@ h, w = im_th.shape[:2]
 mask = np.zeros((h+2, w+2), np.uint8)
 
 # Floodfill from point (0, 0)
-cv.floodFill(im_floodfill, mask, (0,0), 255);
+cv.floodFill(im_floodfill, mask, (0,0), 255)
 
 # Invert floodfilled image
 im_floodfill_inv = cv.bitwise_not(im_th)
@@ -98,14 +100,15 @@ cv.imshow("Thresholded Image", im_th)
 cv.imshow("Floodfilled Image", im_floodfill)
 cv.imshow("Inverted Floodfilled Image", im_floodfill_inv)
 cv.imshow("Foreground", im_out)
-cv.waitKey(0)
+# cv.waitKey(0)
 
 options = "outputbase digits"
-
+custom_config = r'--oem 3 --psm 6 outputbase digits -c tessedit_char_whitelist=123456'
+print("Számok: " + pytesseract.image_to_string(im_out, config=custom_config))
 cv.imshow("Output", im_out)
 
 # rgb = cv.cvtColor(invertalt, cv.COLOR_BGR2RGB)
-text = pytesseract.image_to_string(im_out, config=options)
+text = pytesseract.image_to_string(im_floodfill_inv, config=options)# im_out, config=options)
 print(text)
 # cv.imshow("Inverted",invertalt)
 cv.waitKey(0)
